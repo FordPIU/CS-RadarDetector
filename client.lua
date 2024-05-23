@@ -6,35 +6,52 @@ RegisterNetEvent("Detector:RadarOnSync", function(radars)
 end)
 
 RegisterCommand("rdetector", function(_, args, _)
-    local arg1 = tostring(args[1])
+    local arg1 = tostring(args[1]):lower()
 
     if arg1 == "on" then
         DetectorOn = true
     else
         DetectorOn = false
     end
+
+    print(DetectorOn)
 end, false)
+
+local function getClosestRadarCar(refPoint)
+    local closestVeh, closestDist = nil, 500.0
+
+    for _, veh in pairs(GetGamePool("CVehicle")) do
+        if Entity(veh).state.radarPowered then
+            local dist = #(GetEntityCoords(veh) - refPoint)
+
+            if dist < closestDist then
+                closestVeh, closestDist = veh, dist
+            end
+        end
+    end
+
+    return closestVeh, closestDist
+end
 
 Citizen.CreateThread(function()
     while true do
         if DetectorOn then
             Wait(0)
 
-            for _, veh in pairs(GetGamePool("CVehicle")) do
-                if Entity(veh).state.radarPowered then
-                    local radarCoords = GetEntityCoords(veh)
-                    local playerCoords = GetEntityCoords(PlayerPedId())
-                    local distance = #(radarCoords - playerCoords)
+            local playerPoint = GetEntityCoords(PlayerPedId())
+            local radarVeh, radarDist = getClosestRadarCar(playerPoint)
 
-                    if distance <= 50.0 then
-                        local soundId = GetSoundId()
+            print(radarDist, radarDist * 2.5)
 
-                        PlaySoundFromCoord(soundId, "Beep_Red", radarCoords[1], radarCoords[2], radarCoords[3],
-                            "DLC_HEIST_HACKING_SNAKE_SOUNDS", true, 5.0, true)
-                        ReleaseSoundId(soundId)
-                        Wait(distance * 100)
-                    end
-                end
+            if radarVeh then
+                local soundId = GetSoundId()
+
+                PlaySoundFromCoord(soundId, "Beep_Red", playerPoint[1], playerPoint[2], playerPoint[3],
+                    "DLC_HEIST_HACKING_SNAKE_SOUNDS", true, 5.0, true)
+                ReleaseSoundId(soundId)
+                Wait(radarDist * 2.5)
+            else
+                Wait(100)
             end
         else
             Wait(500)
